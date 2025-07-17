@@ -83,7 +83,7 @@ const docRef = await addDoc(attendeesRef, {
       
       
       console.log("Sending to email:", email);
-
+      statusText.innerText = "📧 Sending ticket to your email...";
       emailjs.send("service_mvkr18k", "template_76a336l", {
         to_name: name,
         to_email: email,
