@@ -1,6 +1,5 @@
-// Firebase config - replace with your actual config
-// import { initializeApp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
-// import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
+ 
+
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
 import {
   getFirestore,
@@ -45,10 +44,10 @@ const attendeesRef = collection(db, "attendees");
 const existingQuery = query(attendeesRef, where("email", "==", email));
 const existingSnap = await getDocs(existingQuery);
 
-if (!existingSnap.empty) {
-  statusText.innerText = "❌ You’ve already registered with this email.";
-  return;
-}
+// if (!existingSnap.empty) {
+//   statusText.innerText = "❌ You’ve already registered with this email.";
+//   return;
+// }
 
 // If not found, proceed to add new doc
 const docRef = await addDoc(attendeesRef, {
