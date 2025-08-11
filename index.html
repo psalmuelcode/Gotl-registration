@@ -4,37 +4,45 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>GOTL 2025 Ticket Registration</title>
+
+  <!-- EmailJS SDK -->
   <script src="https://cdn.jsdelivr.net/npm/emailjs-com@3/dist/email.min.js"></script>
   <script>
-  // Initialize EmailJS here before any send() call
-  emailjs.init("Ye5lGqLNRydJQrTgI"); // 👈 Use your actual Public Key
-</script>
+    emailjs.init("Ye5lGqLNRydJQrTgI"); // Your actual Public Key
+  </script>
+
+  <!-- QR Code Generator -->
   <script src="https://cdn.jsdelivr.net/npm/qrcodejs/qrcode.min.js"></script>
-  <script type="module" src="script.js" defer></script>
+
+  <!-- Firebase SDK v10 Compat (keeps old syntax working) -->
+  <script src="https://www.gstatic.com/firebasejs/10.0.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.0.0/firebase-firestore-compat.js"></script>
+
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-   <canvas id="starCanvas"></canvas>
+  <canvas id="starCanvas"></canvas>
   <div class="scroll-wrapper">
     <div class="container">
-    <h1>🎟️ GOTL 4.0 - Ticket Registration</h1>
-    <form id="ticketForm">
-      <input type="text" id="name" placeholder="Full Name" required />
-      <input type="email" id="email" placeholder="Email Address" required />
-      <input type="tel" id="phone" placeholder="Phone Number" required />
-      <input type="text" id="address" placeholder="Home Address" required />
-      <input type="text" id="church" placeholder="Your Church" required />
-      <select id="tickets" required>
-        <option value="" disabled selected>Select Number of Tickets</option>
-        <option value="1">1</option>
-      </select>
-      <button type="submit">Generate Ticket</button>
-    </form>
-    <div id="qr"></div>
-    <p id="status"></p>
-  </div>
+      <h1>🎟️ GOTL 4.0 - Ticket Registration</h1>
+      <form id="registrationForm">
+        <input type="text" id="name" placeholder="Full Name" required />
+        <input type="email" id="email" placeholder="Email Address" required />
+        <input type="tel" id="phone" placeholder="Phone Number" required />
+        <input type="text" id="address" placeholder="Home Address" required />
+        <input type="text" id="church" placeholder="Your Church (If Applicable)" required />
+        <select id="tickets" required>
+          <option value="" disabled selected>Select Number of Tickets</option>
+          <option value="1">1</option>
+        </select>
+        <button type="submit">Generate Ticket</button>
+      </form>
+      <div id="qr"></div>
+      <p id="status"></p>
+    </div>
   </div>
 
+  <!-- Background Stars Animation -->
   <script>
     const canvas = document.getElementById("starCanvas");
     const ctx = canvas.getContext("2d");
@@ -75,11 +83,8 @@
       canvas.height = window.innerHeight;
     });
   </script>
-  <!-- Firebase SDK -->
-  <script src="https://www.gstatic.com/firebasejs/10.0.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.0.0/firebase-firestore-compat.js"></script>
-  <!-- QR Code Library -->
-  <script src="qrcode.min.js"></script>
-  <!-- <script src="script.js"></script> -->
+
+  <!-- Your main logic -->
+  <script src="script.js" type="module"></script>
 </body>
 </html>
