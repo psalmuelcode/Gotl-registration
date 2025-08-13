@@ -1,6 +1,4 @@
-// =======================
-// FIREBASE INITIALIZATION
-// =======================
+// ==== Firebase init ====
 const firebaseConfig = {
   apiKey: "AIzaSyBi5kmYtQXv6E0PhNgjSAJ5IM5TQGr0mz4",
   authDomain: "gotl-tickets.firebaseapp.com",
@@ -9,48 +7,115 @@ const firebaseConfig = {
   messagingSenderId: "38187079914",
   appId: "1:38187079914:web:a9f73c32fa768e9cec1f93"
 };
-
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
-console.log("Firebase initialized");
 
-// =======================
-// EMAILJS INITIALIZATION
-// =======================
-(function(){
-  emailjs.init("Ye5lGqLNRydJQrTgI"); // Public key
-})();
-console.log("EmailJS initialized");
+// ==== EmailJS init ====
+emailjs.init("Ye5lGqLNRydJQrTgI");
 
-// =======================
-// FORM SUBMISSION HANDLER
-// =======================
-document.addEventListener("DOMContentLoaded", () => {
-  const form = document.getElementById("registrationForm");
-  const qrContainer = document.getElementById("qr");
-  const statusEl = document.getElementById("status");
+// ==== Helpers ====
+function toDocIdFromName(name) {
+  return name.trim().replace(/\s+/g, " ").toLowerCase().replace(/\//g, "∕");
+}
 
-  form.addEventListener("submit", async (e) => {
-    e.preventDefault();
+function debounce(fn, wait = 400) {
+  let t;
+  return (...args) => {
+    clearTimeout(t);
+    t = setTimeout(() => fn(...args), wait);
+  };
+}
 
-    // Get form values
-    const name = document.getElementById("name").value.trim();
-    const email = document.getElementById("email").value.trim();
-    const phone = document.getElementById("phone").value.trim();
-    const address = document.getElementById("address").value.trim();
-    const church = document.getElementById("church").value.trim();
-    const tickets = document.getElementById("tickets").value;
+function setLoading(button, isLoading) {
+  if (!button) return;
+  if (isLoading) {
+    button.dataset.originalText = button.innerHTML;
+    button.innerHTML = `<span class="spinner"></span> Generating...`;
+    button.disabled = true;
+  } else {
+    button.innerHTML = button.dataset.originalText || "Generate Ticket";
+    button.disabled = false;
+  }
+}
 
-    if (!name || !email || !phone || !address || !tickets) {
-      statusEl.textContent = "⚠️ Please fill out all required fields.";
-      statusEl.style.color = "red";
-      return;
+// ==== DOM refs ====
+const form = document.getElementById("registrationForm");
+const submitBtn = form.querySelector('button[type="submit"]');
+const nameInput = document.getElementById("name");
+const nameStatus = document.getElementById("nameStatus");
+const statusEl = document.getElementById("status");
+const qrContainer = document.getElementById("qr");
+
+let nameTaken = false;
+
+// ==== Live name check ====
+const checkNameAvailability = debounce(async () => {
+  const raw = nameInput.value.trim();
+  nameTaken = false;
+  nameStatus.textContent = "";
+  nameStatus.className = "hint";
+
+  if (!raw) {
+    submitBtn.disabled = false;
+    return;
+  }
+
+  try {
+    const docId = toDocIdFromName(raw);
+    const snap = await db.collection("tickets").doc(docId).get();
+
+    if (snap.exists) {
+      nameTaken = true;
+      nameStatus.textContent = "This name is already registered.";
+      nameStatus.classList.add("error");
+      submitBtn.disabled = true;
+    } else {
+      nameTaken = false;
+      nameStatus.textContent = "Name is available.";
+      nameStatus.classList.add("ok");
+      submitBtn.disabled = false;
     }
+  } catch (err) {
+    console.error("Name check failed:", err);
+  }
+}, 400);
 
-    try {
-      // Save to Firestore
-      const docRef = await db.collection("tickets").add({
-        name,
+nameInput.addEventListener("input", checkNameAvailability);
+
+// ==== Submit handler ====
+form.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  setLoading(submitBtn, true);
+  statusEl.textContent = "";
+  statusEl.style.color = "inherit";
+
+  const rawName = nameInput.value.trim();
+  const email = document.getElementById("email").value.trim();
+  const phone = document.getElementById("phone").value.trim();
+  const address = document.getElementById("address").value.trim();
+  const church = document.getElementById("church").value.trim();
+  const tickets = document.getElementById("tickets").value;
+
+  if (!rawName || !email || !phone || !address || !tickets) {
+    statusEl.textContent = "⚠️ Please fill out all required fields.";
+    statusEl.style.color = "red";
+    setLoading(submitBtn, false);
+    return;
+  }
+
+  const docId = toDocIdFromName(rawName);
+  const docRef = db.collection("tickets").doc(docId);
+
+  try {
+    // 🔒 Re-check inside transaction
+    await db.runTransaction(async (t) => {
+      const doc = await t.get(docRef);
+      if (doc.exists) {
+        throw new Error(`❌ The name "${rawName}" is already registered.`);
+      }
+
+      t.set(docRef, {
+        name: rawName,
         email,
         phone,
         address,
@@ -58,44 +123,35 @@ document.addEventListener("DOMContentLoaded", () => {
         tickets,
         createdAt: firebase.firestore.FieldValue.serverTimestamp()
       });
+    });
 
-      console.log("Ticket stored in Firestore with ID:", docRef.id);
+    // ✅ Generate QR silently
+    const qrData = `Ticket ID: ${docId}\nName: ${rawName}\nTickets: ${tickets}`;
+    const temp = document.createElement("div");
+    new QRCode(temp, { text: qrData, width: 200, height: 200 });
 
-      // Clear previous QR
-      qrContainer.innerHTML = "";
+    const qrImg = temp.querySelector("img") || temp.querySelector("canvas");
+    const qrBase64 = qrImg.tagName === "CANVAS" ? qrImg.toDataURL() : qrImg.src;
 
-      // Generate QR code and capture as Base64
-      const qrData = `Ticket ID: ${docRef.id}\nName: ${name}\nTickets: ${tickets}`;
-      const tempCanvas = document.createElement("canvas");
-      new QRCode(tempCanvas, {
-        text: qrData,
-        width: 200,
-        height: 200
-      });
+    // ✅ Send email with QR code
+    await emailjs.send("service_mvkr18k", "template_76a336l", {
+      to_email: email,
+      to_name: rawName,
+      ticket_id: docId,
+      tickets,
+      qr_code: qrBase64,
+      message: `Ticket ID: ${docId}\nName: ${rawName}\nEmail: ${email}\nPhone: ${phone}\nTickets: ${tickets}\nChurch: ${church}\nAddress: ${address}`
+    });
 
-      // Extract Base64 PNG from canvas
-      const qrImageBase64 = tempCanvas.querySelector("img").src;
-
-      // Show QR code in page
-      qrContainer.appendChild(tempCanvas.querySelector("img"));
-
-      // Send email with EmailJS (including QR code image)
-      await emailjs.send("service_mvkr18k", "template_76a336l", {
-        to_email: email,
-        to_name: name,
-        ticket_id: docRef.id,
-        tickets: tickets,
-        qr_code: qrImageBase64
-      });
-
-      statusEl.textContent = "✅ Ticket generated & email sent!";
-      statusEl.style.color = "green";
-      form.reset();
-
-    } catch (error) {
-      console.error("Error generating ticket:", error);
-      statusEl.textContent = "❌ Something went wrong. Please try again.";
-      statusEl.style.color = "red";
-    }
-  });
+    statusEl.textContent = "✅ Ticket generated & email sent!";
+    statusEl.style.color = "green";
+    form.reset();
+    nameStatus.textContent = "";
+  } catch (err) {
+    statusEl.textContent = err.message;
+    statusEl.style.color = "red";
+    console.error("Registration failed:", err);
+  } finally {
+    setLoading(submitBtn, false);
+  }
 });

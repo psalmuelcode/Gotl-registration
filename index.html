@@ -27,6 +27,7 @@
       <h1>🎟️ GOTL 4.0 - Ticket Registration</h1>
       <form id="registrationForm">
         <input type="text" id="name" placeholder="Full Name" required />
+        <small id="nameStatus" class="hint"></small>
         <input type="email" id="email" placeholder="Email Address" required />
         <input type="tel" id="phone" placeholder="Phone Number" required />
         <input type="text" id="address" placeholder="Home Address" required />
@@ -36,6 +37,7 @@
           <option value="1">1</option>
         </select>
         <button type="submit">Generate Ticket</button>
+        <div id="status"></div>
       </form>
       <div id="qr"></div>
       <p id="status"></p>
